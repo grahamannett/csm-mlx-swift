@@ -5,7 +5,7 @@
 
 /*
 Current notes, I am still figuring out how to implement this as not used swift before:
-- The `adding-model.md` file in the mlx-swift-examples is kinda useless since doesnt really explain how to add models that may utilize other models
+- The README for the VLM models is much better than the `adding-model.md` file in the mlx-swift-examples
 - It says to create a struct to match the config.json file, i believe that is the file from:
     - `.cache/huggingface/hub/models--sesame--csm-1b/snapshots/03ab46ff5cfdcc783cc76fcf9ea6fd0838503093/config.json`
     - but this file has like 5 keys while the examples always have like keys for many parameters
@@ -168,7 +168,8 @@ public enum StringOrNumber: Codable, Sendable {
         } else if let value = try? container.decode(Float.self) {
             self = .float(value)
         } else {
-            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode StringOrNumber")
+            throw DecodingError.dataCorruptedError(
+                in: container, debugDescription: "Cannot decode StringOrNumber")
         }
     }
 
@@ -305,10 +306,12 @@ private enum Language {
             var keys = wk(x)
             var values = wv(x)
 
-            let headDim = config.headDim > 0 ? config.headDim : config.hiddenSize / config.numAttentionHeads
+            let headDim =
+                config.headDim > 0 ? config.headDim : config.hiddenSize / config.numAttentionHeads
 
             // prepare the queries, keys and values for the attention computation
-            queries = queries.reshaped(B, L, config.numAttentionHeads, headDim).transposed(0, 2, 1, 3)
+            queries = queries.reshaped(B, L, config.numAttentionHeads, headDim).transposed(
+                0, 2, 1, 3)
             keys = keys.reshaped(B, L, config.numKeyValueHeads, headDim).transposed(0, 2, 1, 3)
             values = values.reshaped(B, L, config.numKeyValueHeads, headDim).transposed(0, 2, 1, 3)
 
@@ -326,7 +329,6 @@ private enum Language {
             )
             .transposed(0, 2, 1, 3)
             .reshaped(B, L, -1)
-
 
             return wo(output)
         }
@@ -394,7 +396,7 @@ private enum Language {
 
             self.hiddenScale = pow(Float(config.hiddenSize), 0.5)
 
-            self.layers = (0 ..< config.numHiddenLayers)
+            self.layers = (0..<config.numHiddenLayers)
                 .map { _ in
                     TransformerBlock(config)
                 }
@@ -432,7 +434,7 @@ private enum Language {
         public init(_ config: BackboneConfiguration) {
             self.model = LlamaModel(config)
 
-            self.kvHeads = (0 ..< config.numHiddenLayers).map { _ in config.numKeyValueHeads }
+            self.kvHeads = (0..<config.numHiddenLayers).map { _ in config.numKeyValueHeads }
         }
 
         // Added overload for DecoderConfiguration
@@ -453,7 +455,7 @@ private enum Language {
                 ropeTheta: config.ropeTheta
             )
             self.model = LlamaModel(backboneConfig)
-            self.kvHeads = (0 ..< config.numHiddenLayers).map { _ in config.numKeyValueHeads }
+            self.kvHeads = (0..<config.numHiddenLayers).map { _ in config.numKeyValueHeads }
         }
 
         public func callAsFunction(
@@ -492,8 +494,14 @@ public class CSM: Module, LanguageModel, LoRAModel, KVCacheDimensionProvider {
         self.config = config
 
         // Calculate embedding dimensions
-        let backboneEmbeddingDim = backbone.numAttentionHeads * (backbone.headDim > 0 ? backbone.headDim : backbone.hiddenSize / backbone.numAttentionHeads)
-        let decoderEmbeddingDim = decoder.numAttentionHeads * (decoder.headDim > 0 ? decoder.headDim : decoder.hiddenSize / decoder.numAttentionHeads)
+        let backboneEmbeddingDim =
+            backbone.numAttentionHeads
+            * (backbone.headDim > 0
+                ? backbone.headDim : backbone.hiddenSize / backbone.numAttentionHeads)
+        let decoderEmbeddingDim =
+            decoder.numAttentionHeads
+            * (decoder.headDim > 0
+                ? decoder.headDim : decoder.hiddenSize / decoder.numAttentionHeads)
 
         // Initialize the language models
         self._backboneModel.wrappedValue = Language.LanguageModel(backbone)
@@ -529,14 +537,18 @@ public class CSM: Module, LanguageModel, LoRAModel, KVCacheDimensionProvider {
     }
 
     // LanguageModel protocol conformance
-    public func prepare(_ input: LMInput, cache: [any KVCache], windowSize: Int?) throws -> PrepareResult {
+    public func prepare(_ input: LMInput, cache: [any KVCache], windowSize: Int?) throws
+        -> PrepareResult
+    {
         // Simplified implementation for now
         let tokens = input.text.tokens
         let logits = self.callAsFunction(tokens, cache: cache as? [KVCache])
         return .logits(LMOutput(logits: logits))
     }
 
-    public func callAsFunction(_ input: LMInput.Text, cache: [KVCache]?, state: LMOutput.State?) -> LMOutput {
+    public func callAsFunction(_ input: LMInput.Text, cache: [KVCache]?, state: LMOutput.State?)
+        -> LMOutput
+    {
         let logits = self.callAsFunction(input.tokens, cache: cache)
         return LMOutput(logits: logits)
     }
@@ -556,15 +568,15 @@ public class CSM: Module, LanguageModel, LoRAModel, KVCacheDimensionProvider {
         // Implementation based on the provided Python code
 
         // 1. Process text tokens
-        let textTokens = tokens[0..., 0..., -1] // Select the last token ID (assumed text)
+        let textTokens = tokens[0..., 0..., -1]  // Select the last token ID (assumed text)
         var textEmbeds = self.textEmbeddings(textTokens)
-        textEmbeds = expandedDimensions(textEmbeds, axis: -2) // Add dimension: [B, S, 1, E]
+        textEmbeds = expandedDimensions(textEmbeds, axis: -2)  // Add dimension: [B, S, 1, E]
 
         // 2. Process audio tokens
-        let audioTokens = tokens[0..., 0..., ..<(-1)] // Select all but the last token ID (assumed audio)
+        let audioTokens = tokens[0..., 0..., ..<(-1)]  // Select all but the last token ID (assumed audio)
 
         // Create codebook indices and calculate offsets
-        let codebookIndices = MLXArray(0 ..< config.audioNumCodebooks).asType(audioTokens.dtype)
+        let codebookIndices = MLXArray(0..<config.audioNumCodebooks).asType(audioTokens.dtype)
         let codebookOffsets = codebookIndices * config.audioVocabSize
 
         // Add offsets to audio tokens (broadcasting applies)
@@ -575,12 +587,12 @@ public class CSM: Module, LanguageModel, LoRAModel, KVCacheDimensionProvider {
         var audioEmbeds = self.audioEmbeddings(flattenedAudioTokens)
 
         // Reshape audio embeddings back
-        let B = tokens.dim(0) // Batch size
-        let S = tokens.dim(1) // Sequence length
-        audioEmbeds = audioEmbeds.reshaped(B, S, config.audioNumCodebooks, -1) // Reshape to [B, S, C, E]
+        let B = tokens.dim(0)  // Batch size
+        let S = tokens.dim(1)  // Sequence length
+        audioEmbeds = audioEmbeds.reshaped(B, S, config.audioNumCodebooks, -1)  // Reshape to [B, S, C, E]
 
         // 3. Concatenate audio and text embeddings
-        let combinedEmbeds = concatenated([audioEmbeds, textEmbeds], axis: -2) // Concatenate along the codebook/text dimension
+        let combinedEmbeds = concatenated([audioEmbeds, textEmbeds], axis: -2)  // Concatenate along the codebook/text dimension
 
         return combinedEmbeds
     }

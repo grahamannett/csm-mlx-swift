@@ -33,6 +33,8 @@ let package = Package(
                 .product(name: "MLXRandom", package: "mlx-swift"),
                 .product(name: "Transformers", package: "swift-transformers"),
                 .product(name: "MLXLMCommon", package: "mlx-swift-examples"),
+                .product(name: "MLXVLM", package: "mlx-swift-examples"),
+                .product(name: "MLXLLM", package: "mlx-swift-examples"),
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")
@@ -42,5 +44,9 @@ let package = Package(
             name: "csm-mlx-swiftTests",
             dependencies: ["csm-mlx-swift"]
         ),
+       .testTarget( // if possible, get multiple targets to run from sweetpad?
+           name: "TTSModelFactoryTests",
+           dependencies: [ "csm-mlx-swift"]
+       ),
     ]
 )
