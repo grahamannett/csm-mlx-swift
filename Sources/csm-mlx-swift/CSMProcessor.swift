@@ -9,7 +9,7 @@ public struct Segment {
 }
 
 public class CSMProcessor: UserInputProcessor {
-    func generate(
+    public func generate(
         text: String, speaker: Int, context: [Segment]? = nil, maxAudioLength: Int = 90_000,
         temperature: Float = 0.9, topK: Int = 50
     ) -> MLXArray {
@@ -29,7 +29,7 @@ public class CSMProcessor: UserInputProcessor {
         return MLXArray()  // Placeholder - implement actual generation logic
     }
 
-    public func tokenizeSegment(segment: Segment) -> (MLXArray, MLXArray) {
+    private func tokenizeSegment(segment: Segment) -> (MLXArray, MLXArray) {
         let tokens = segment.text.map { String($0) }
         let tokensMask = Array(repeating: 1, count: tokens.count)
         // return (tokens, tokensMask)
