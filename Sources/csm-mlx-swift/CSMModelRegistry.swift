@@ -11,11 +11,7 @@ public class CSMTypeRegistry: ModelTypeRegistry, @unchecked Sendable {
     /// All predefined model types
     private static func all() -> [String: @Sendable (URL) throws -> any LanguageModel] {
         [
-            "sesame/csm": { url in
-                let configuration = try JSONDecoder().decode(
-                    CSMConfiguration.self, from: Data(contentsOf: url))
-                return CSM(configuration)
-            }
+            "sesame/csm": create(CSMConfiguration.self, CSM.init)
         ]
     }
 }
@@ -88,14 +84,15 @@ public class CSMModelFactory: ModelFactory, @unchecked Sendable {
         let dummyProcessor = DummyProcessor()
 
         return .init(
-            configuration: configuration, model: model, processor: dummyProcessor, tokenizer: tokenizer)
+            configuration: configuration, model: model, processor: dummyProcessor,
+            tokenizer: tokenizer)
     }
 }
 
 /// Dummy processor until we have a proper CSM processor
 private class DummyProcessor: UserInputProcessor {
     public func prepare(input: UserInput) throws -> LMInput {
-        let promptTokens = [0] // Just a placeholder
+        let promptTokens = [0]  // Just a placeholder
         let promptArray = MLXArray(promptTokens).expandedDimensions(axis: 0)
         return LMInput(text: .init(tokens: promptArray))
     }
